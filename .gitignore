@@ -1,2 +1,6 @@
 # Local testing folder
 .claudeskills-testing/
+
+# Generated lead lists (public-record addresses; keep out of git)
+deals/leads/
+__pycache__/

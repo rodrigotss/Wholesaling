@@ -28,6 +28,7 @@ AI-powered tools for real estate wholesalers. Give Claude an address and it pull
 | Skill | File | Use When |
 |-------|------|----------|
 | Start Here | `.claudeskills/start-here-SKILL.md` | First run, routing, pipeline status, "what should I do next" |
+| Lead Finder | `.claudeskills/lead-finder-SKILL.md` | You want leads found for you — give a ZIP, get ranked distressed properties (Dallas) |
 | Property Recon | `.claudeskills/property-recon-SKILL.md` | You have an address and need the full picture — owner, value, taxes, liens, motivation score |
 | Comp Analyzer | `.claudeskills/comp-analyzer-SKILL.md` | You need comps, ARV, and a defensible number to make offers or build deal packages |
 | Rehab Estimator | `.claudeskills/rehab-estimator-SKILL.md` | You have a listing with photos and need repair cost estimates across 3 scenarios |
@@ -37,7 +38,7 @@ AI-powered tools for real estate wholesalers. Give Claude an address and it pull
 
 ## Skill Chain
 ```
-/property-recon → /comp-analyzer → /rehab-estimator → /creative-finance → /conversation-coach → /deal-stacker
+/lead-finder → /property-recon → /comp-analyzer → /rehab-estimator → /creative-finance → /conversation-coach → /deal-stacker
 ```
 
 ## Routing
@@ -45,6 +46,7 @@ AI-powered tools for real estate wholesalers. Give Claude an address and it pull
 The orchestrator (`start-here-SKILL.md`) handles all routing. Quick reference:
 
 ```
+IF user says "find deals/leads/houses" or gives a ZIP → /lead-finder
 IF user provides an address → Check ./deals/ for existing data, then /property-recon
 IF user says "rehab" or "estimate" or provides photos → /rehab-estimator
 IF user says "comps" or "ARV" or "value" → /comp-analyzer

@@ -36,6 +36,7 @@ Every skill in the system, what it does, and where it sits in the chain.
   Skill                    Purpose                         Status
   ─────────────────────────────────────────────────────────────
   /start-here              Orchestrate, route, prioritize  v1.0
+  /lead-finder             Find leads by ZIP (no address)  v0.1
   /property-recon          Full property intel from address v1.0
   /rehab-estimator         Photo-based repair estimates    v1.0
   /comp-analyzer           Comparable sales + ARV          v1.0
@@ -135,6 +136,10 @@ Parse the user's request and route to the right skill.
 ### Primary Router
 
 ```
+IF user says "find deals" or "find leads" or "find houses" or "run the pipeline"
+   or gives a ZIP code instead of an address →
+  Route to /lead-finder
+
 IF user provides an address (any format) →
   Check if address exists in ./deals/
   IF exists → Show existing data, offer update or next skill
