@@ -1,0 +1,25 @@
+{
+  "_comment": "monday.com Sol Acquisitions board (Main workspace, owner Cash James). Column ids from get_board_info on 2026-11-07. Re-check with get_board_info if a write fails.",
+  "board_id": 18437049281,
+  "group_id": "new_group29179",
+  "group_name": "1. Lead & Acquisition",
+  "columns": {
+    "status": "project_status",
+    "priority": "priority",
+    "house_link": "link_mm8gypee",
+    "property_type": "single_selectbmiyu1h",
+    "lead_source": "dropdown_mm8jtssw",
+    "notes": "text",
+    "sellers_name": "text_mm8gz3p2",
+    "bedrooms": "numberxhxigbc3",
+    "bathrooms": "numbericzf6eqw",
+    "sqft": "numberj11ymboc",
+    "seller_phone": "phone_mm8g80mw",
+    "seller_email": "email_mm8gz1dx"
+  },
+  "labels": {
+    "status_new": "Lead / Discovery",
+    "property_type": "Single Family",
+    "lead_source": "Public Records"
+  }
+}

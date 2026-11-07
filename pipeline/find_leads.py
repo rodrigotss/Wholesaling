@@ -169,6 +169,12 @@ def score(p: dict, c311: dict | None, now: datetime) -> tuple[int, list[str]]:
         s -= 15
         why.append("company-owned")
 
+    # Back taxes eat the equity: past ~50% of value there is usually no deal.
+    value, due = p.get("market_value") or 0, p.get("amount_due") or 0
+    if value and due > 0.5 * value:
+        s -= 60
+        why.append(f"back taxes {due / value:.0%} of value - likely no equity")
+
     return max(0, min(100, s)), why
 
 

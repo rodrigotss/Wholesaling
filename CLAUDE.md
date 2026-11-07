@@ -28,6 +28,7 @@ AI-powered tools for real estate wholesalers. Give Claude an address and it pull
 | Skill | File | Use When |
 |-------|------|----------|
 | Start Here | `.claudeskills/start-here-SKILL.md` | First run, routing, pipeline status, "what should I do next" |
+| Daily Leads | `.claudeskills/daily-leads-SKILL.md` | Scheduled daily run: 15 new leads to the Sol Acquisitions monday board + skip-trace file + one new data source from `docs/expansion-backlog.md` |
 | Lead Finder | `.claudeskills/lead-finder-SKILL.md` | You want leads found for you — give a ZIP, get ranked distressed properties (Dallas) |
 | Property Recon | `.claudeskills/property-recon-SKILL.md` | You have an address and need the full picture — owner, value, taxes, liens, motivation score |
 | Comp Analyzer | `.claudeskills/comp-analyzer-SKILL.md` | You need comps, ARV, and a defensible number to make offers or build deal packages |
