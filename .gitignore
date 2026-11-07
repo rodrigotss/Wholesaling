@@ -4,3 +4,4 @@
 # Generated lead lists (public-record addresses; keep out of git)
 deals/leads/
 __pycache__/
+data/

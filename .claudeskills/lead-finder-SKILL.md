@@ -16,16 +16,16 @@ find_leads.py (free data) → shortlist → /property-recon (top N) → pipeline
 
 ## SUPPORTED MARKETS
 
-| Market | Data source | Script |
-|--------|-------------|--------|
-| Dallas, TX (ZIPs 75xxx inside city limits) | Dallas 311 Service Requests, dataset `d7e7-envw`, updated daily | `pipeline/find_leads.py` |
+| Market | Data | Scripts |
+|--------|------|---------|
+| Dallas County, TX (all ZIPs 75xxx in the county) | DCAD appraisal data + County delinquent tax roll (free bulk files) | `pipeline/build_dallas_db.py`, `pipeline/find_leads.py` |
+| City of Dallas (extra signal) | Dallas 311 code complaints, daily | built into `find_leads.py` |
 
-For any other market, say so plainly and offer to add one. Many cities
-publish code violations through Socrata (see the table in
-`property-recon-SKILL.md`, Layer 5).
+For any other market, say so plainly and offer to add one. See
+`docs/wholesale-lead-research.md` for the source list and what to add next.
 
 > The older Dallas "Code Violations" dataset (`x9pz-kdq9`) stopped
-> updating in July 2018. Do not use it for lead finding.
+> updating in July 2018. Do not use it.
 
 ---
 
@@ -34,34 +34,49 @@ publish code violations through Socrata (see the table in
 | Input | Required | Default |
 |-------|----------|---------|
 | ZIP code(s) | Yes | Ask. If deals exist, suggest ZIPs already in `deals/market-profiles/` |
-| Look-back months | No | 12 |
-| How many to recon | No | 5 (each recon costs Firecrawl credits) |
+| Max appraised value | No | $450,000 |
+| How many to recon | No | 5 |
 
 ---
 
 ## PROCESS
 
+### Step 0 — Make sure the database is fresh
+
+If `data/dallas.sqlite` is missing or its `meta.built` date is more than
+7 days old, rebuild it (downloads ~450 MB, about 2 minutes):
+
+```bash
+python3 pipeline/build_dallas_db.py
+```
+
 ### Step 1 — Pull and score leads
 
 ```bash
-python3 pipeline/find_leads.py <zip> [<zip> ...] --months 12 --top 25
+python3 pipeline/find_leads.py <zip> [<zip> ...] --top 25 --max-value 450000
 ```
 
-Writes `deals/leads/{zip}-{date}.md` (shortlist) and `.csv` (every address).
+Writes `deals/leads/{zip}-{date}.md` (shortlist) and `.csv` (every house
+with a signal, including owner name and mailing address for direct mail).
 
-Scoring (0–100):
+Only single-family homes (DCAD code A11), government owners removed.
+Scoring (0–100, signals stack):
 
 | Signal | Points |
 |--------|--------|
-| Code complaints in window: 1 / 2 / 3–4 / 5–9 / 10+ | 5 / 20 / 30 / 40 / 45 |
-| Latest complaint ≤ 60 days / ≤ 180 days | +20 / +10 |
-| Any request still open | +15 |
-| "Single Family Rental Needs Registration" request (landlord) | +20 |
-| Likely apartment/commercial (25+ complaints or unit marker) | −30, removed from shortlist |
-
-The shortlist cutoff is 40. Big commercial corridors (e.g. Simpson Stuart
-Rd, Camp Wisdom Rd) can still slip through with 10–24 complaints — Step 2
-catches them.
+| Taxes delinquent 1 / 2 / 3+ years | +20 / +28 / +35 |
+| Tax suit filed (county is suing — sheriff's sale possible) | +15 |
+| Bankruptcy on tax account | +5 |
+| On a tax payment plan | −10 |
+| Estate / inherited owner ("EST OF", "(INHERIT)") | +25 |
+| Absentee (no homestead + mailing address elsewhere) | +15 |
+| …and out of state | +10 |
+| Owned 20+ / 10+ years (equity proxy) | +10 / +5 |
+| Condition poor / fair (DCAD rating) | +15 / +8 |
+| 311 code complaints 1 / 2 / 3–4 / 5+ | +5 / +10 / +15 / +20 |
+| 311 complaint in last 60 days / case still open | +5 / +5 |
+| Unregistered rental (311) | +10 |
+| Company-owned (LLC, Inc, LP…) | −15 |
 
 ### Step 2 — Recon the top leads
 
