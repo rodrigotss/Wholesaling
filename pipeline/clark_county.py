@@ -48,7 +48,7 @@ PARCEL_URL = ("https://maps.clarkcountynv.gov/assessor/AssessorParcelDetail/parc
               "?hdnParcel={apn}&hdnInstance=pcl7")
 
 NON_PERSON = re.compile(
-    r"\b(L ?L ?C|INC|CORP|LP|LTD|CO|COMPANY|HOLDINGS|PROPERTIES|INVESTMENTS?|REALTY|PARTNERS|FUND|"
+    r"\b(L ?L ?C|INC|CORP|CORPORATION|LIMITED|LP|LTD|CO|COMPANY|HOLDINGS|PROPERTIES|INVESTMENTS?|REALTY|PARTNERS|FUND|"
     r"BANK|ASSOCIATION|ASSN|HOA|CHURCH|CITY OF|COUNTY|STATE OF|UNITED STATES|DBA|MINISTR\w*|GROUP|"
     r"VENTURES|DEVELOPMENT|ENTERPRISES|UNKNOWN OWNER|LAND|HOMES|BUILDERS|CAPITAL|MANAGEMENT|PROJECT|"
     r"SERIES|IGLESIA|TEMPLO|BAPTIST|HOUSING AUTH\w*)\b")
@@ -154,16 +154,17 @@ def score(p: dict) -> tuple[int, list[str]]:
     # One year of Clark County tax is roughly 1% of taxable value.
     yrs_est = due / (0.01 * val) if val else 0
     if yrs_est >= 2.5:
-        s += 35; why.append(f"~{yrs_est:.0f}yrs of taxes owed (${due:,.0f})")
+        s += 35; why.append(f"~{'3+' if yrs_est >= 3.5 else '3'}yrs of taxes owed (${due:,.0f})")
     elif yrs_est >= 1.5:
         s += 28; why.append(f"~2yrs of taxes owed (${due:,.0f})")
     else:
         s += 20; why.append(f"taxes delinquent (${due:,.0f})")
     if ESTATE.search(p["owner"].upper()):
         s += 25; why.append("estate/heirs")
-    loc_num = re.match(r"(\d+)", p["address"] or "")
-    mail_num = re.match(r"(\d+)", p["mailing"] or "")
-    absentee = not (loc_num and mail_num and loc_num.group(1) == mail_num.group(1))
+    # Absentee unless the mailing block contains the property's house number + street name
+    loc = re.match(r"(\d+)\s+(?:[NSEW]\s+)?(\w+)", (p["address"] or "").upper())
+    mail = re.sub(r"\s+", " ", (p["mailing"] or "").upper())
+    absentee = not (loc and re.search(rf"\b{loc.group(1)}\b(?:\s+[NSEW])?\s+{re.escape(loc.group(2))[:5]}", mail))
     if absentee:
         s += 15; why.append("absentee owner")
         if p["mail_state"] and p["mail_state"] != "NV":
@@ -188,6 +189,39 @@ def score(p: dict) -> tuple[int, list[str]]:
     return max(0, min(100, s)), why
 
 
+CSV_COLS = ["score", "address", "town", "apn_fmt", "owner", "contact", "mailing", "mail_state", "amount_due",
+            "taxable_value", "last_sale_price", "last_sale", "years_owned", "beds", "baths", "sqft", "year_built",
+            "absentee", "why"]
+
+
+def write_csv(leads, path):
+    with path.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=CSV_COLS, extrasaction="ignore")
+        w.writeheader()
+        for p in leads:
+            w.writerow(p)
+
+
+def rescore(src: Path, out: Path):
+    """Re-apply filters and scoring to a saved leads.csv (code-case counts are re-fetched; cheap)."""
+    code = load_code_cases()
+    leads = []
+    for r in csv.DictReader(src.open()):
+        if NON_PERSON.search(r["owner"].upper()) or "TRUSTEE CLARK COUNTY TREASURER" in r["mailing"].upper():
+            continue
+        p = dict(r)
+        p["amount_due"] = float(r["amount_due"])
+        p["taxable_value"] = int(float(r["taxable_value"])) if r["taxable_value"] else None
+        p["last_sale"] = date.fromisoformat(r["last_sale"]) if r["last_sale"] else None
+        p["code"] = code.get(re.sub(r"\D", "", r["apn_fmt"]))
+        p["score"], why = score(p)
+        p["why"] = "; ".join(why)
+        leads.append(p)
+    leads.sort(key=lambda p: (-p["score"], -p["amount_due"]))
+    write_csv(leads, out / "leads.csv")
+    print(f"rescored {len(leads)} → {out / 'leads.csv'}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--notice-xlsx", type=Path)
@@ -199,8 +233,11 @@ def main():
     ap.add_argument("--max-value", type=float, default=600000)
     ap.add_argument("--exclude", type=Path, help="Board item names already on monday (skip)")
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--rescore", type=Path, help="Re-score an existing leads.csv offline (no lookups)")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
+    if args.rescore:
+        return rescore(args.rescore, args.out)
 
     print("notice…", flush=True)
     notice = load_notice(args.notice_xlsx)
@@ -249,13 +286,7 @@ def main():
             print(f"  {i + 1} looked up, {len(leads)} single-family kept", flush=True)
 
     leads.sort(key=lambda p: (-p["score"], -p["amount_due"]))
-    cols = ["score", "address", "town", "apn_fmt", "owner", "contact", "mailing", "mail_state", "amount_due", "taxable_value",
-            "last_sale_price", "last_sale", "years_owned", "beds", "baths", "sqft", "year_built", "absentee", "why"]
-    with (args.out / "leads.csv").open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
-        w.writeheader()
-        for p in leads:
-            w.writerow(p)
+    write_csv(leads, args.out / "leads.csv")
     print(f"done: {len(leads)} single-family leads → {args.out / 'leads.csv'}")
 
 

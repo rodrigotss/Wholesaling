@@ -31,10 +31,28 @@ def owner_first_last(owner: str):
     return (" ".join(o[1:]).title(), o[0].title()) if o else ("", "")
 
 
+SUFFIX = {"ST", "AVE", "AV", "DR", "RD", "LN", "WAY", "CT", "CIR", "BLVD", "PL", "PKWY", "TRL", "HWY", "TER",
+          "LOOP", "SQ", "PT", "XING", "PASS", "RUN", "ROW", "PATH", "WALK", "CV", "BND", "GRV", "HTS", "MNR"}
+
+
 def split_mailing(m: str):
+    """'435 LOS FELIZ ST LAS VEGAS NV 89110' -> ('435 Los Feliz St', 'Las Vegas', 'NV', '89110')"""
     m = re.sub(r"^(C/O|%)\s*.+?\s+(?=\d|P ?O BOX)", "", m.strip(), flags=re.I)
-    x = re.match(r"^(.*?)\s+([A-Z][A-Z .'-]+?)\s+([A-Z]{2})\s+(\d{5})(?:-\d{4})?$", m)
-    return (x.group(1).title(), x.group(2).title(), x.group(3), x.group(4)) if x else (m.title(), "", "", "")
+    x = re.match(r"^(.*)\s+([A-Z]{2})\s+(\d{5})(?:-?\d{4})?$", m)
+    if not x:
+        return m.title(), "", "", ""
+    toks, st, z = x.group(1).split(), x.group(2), x.group(3)
+    cut = None
+    for i, tok in enumerate(toks):
+        if tok in SUFFIX or tok.startswith("#") or (i and toks[i - 1] in ("BOX", "UNIT", "APT", "STE", "#")):
+            cut = i + 1
+        elif tok in ("UNIT", "APT", "STE") and i + 1 < len(toks):
+            cut = i + 2
+    if cut is None or cut >= len(toks):
+        return x.group(1).title(), "", st, z
+    while cut < len(toks) and toks[cut] in ("N", "S", "E", "W", "NE", "NW", "SE", "SW") and cut + 1 < len(toks) and toks[cut - 1] in SUFFIX:
+        cut += 1  # trailing directional, e.g. "188TH ST SE"
+    return " ".join(toks[:cut]).title(), " ".join(toks[cut:]).title(), st, z
 
 
 def main():
@@ -78,7 +96,8 @@ def main():
             first, last = " ".join(parts[:-1]), parts[-1]
         else:
             first, last = owner_first_last(r["owner"])
-        st.append([first, last, r["address"].title(), city, "NV", "", street, mcity, mst, mzip, r["owner"].title(), r["apn_fmt"]])
+        pzip = mzip if r["absentee"] == "False" else ""
+        st.append([first, last, r["address"].title(), city, "NV", pzip, street, mcity, mst, mzip, r["owner"].title(), r["apn_fmt"]])
     (a.out / "monday_items.json").write_text(json.dumps(items))
     with (a.out / "skiptrace.csv").open("w", newline="") as f:
         w = csv.writer(f)
