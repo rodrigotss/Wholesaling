@@ -194,6 +194,7 @@ def main():
     ap.add_argument("--min-due", type=float, default=2500)
     ap.add_argument("--max-due", type=float, default=60000)
     ap.add_argument("--lookups", type=int, default=450, help="Max assessor page lookups")
+    ap.add_argument("--start", type=int, default=0, help="Skip this many pre-ranked candidates (resume a run)")
     ap.add_argument("--delay", type=float, default=0.8, help="Seconds between assessor lookups")
     ap.add_argument("--max-value", type=float, default=600000)
     ap.add_argument("--exclude", type=Path, help="Board item names already on monday (skip)")
@@ -222,7 +223,7 @@ def main():
         exclude = {l.split(",")[0].strip().upper() for l in args.exclude.read_text().splitlines() if l.strip()}
 
     leads = []
-    for i, p in enumerate(pool[:args.lookups]):
+    for i, p in enumerate(pool[args.start:args.start + args.lookups]):
         try:
             d = parse_parcel(text_of(get(PARCEL_URL.format(apn=p["apn"])).decode("utf-8", "replace")))
         except Exception as e:  # noqa: BLE001
